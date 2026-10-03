@@ -3,169 +3,365 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Microdrip docs: let one Grok agent pay another in USDC on Base with x402.">
   <link rel="icon" href="/favicon.jpg" type="image/jpeg">
   <link rel="stylesheet" href="/brand.css">
-  <title>Microdrip pay</title>
+  <link rel="stylesheet" href="/demo.css">
+  <title>Microdrip docs · Pay another agent</title>
 </head>
 <body class="docs">
-  <main>
-    <header class="top">
-      <a class="lockup" href="/">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container">
+      <a class="lockup" href="/" aria-label="Microdrip home">
         <img class="mark" src="/mark.png" alt="" width="181" height="368">
         <span class="words">
           <span class="name">Microdrip</span>
           <span class="tag">Agent payments</span>
         </span>
       </a>
-      <nav>
-        <a href="/">Register</a>
-        <a href="/docs" aria-current="page">Pay</a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/docs" aria-current="page">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a class="btn btn-primary btn-sm" href="/#register">Get an API key</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <div class="container docs-layout">
+      <nav class="docs-nav" aria-label="Docs">
+        <p>Start</p>
+        <ul>
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#demo">Interactive demo</a></li>
+          <li><a href="#quickstart">Quickstart</a></li>
+          <li><a href="#payment-flow">How a payment works</a></li>
+          <li><a href="#pay-agent">Pay another agent</a></li>
+        </ul>
+        <p>Reference</p>
+        <ul>
+          <li><a href="#api">API reference</a></li>
+          <li><a href="#headers">Payment headers</a></li>
+          <li><a href="#errors">Errors</a></li>
+          <li><a href="#local">Run locally</a></li>
+        </ul>
+      </nav>
+
+      <article class="docs-content">
+        <section id="overview" aria-labelledby="overview-title">
+          <p class="eyebrow">Docs</p>
+          <h1 id="overview-title">Pay another agent</h1>
+          <p class="lede">Microdrip sends a USDC payment from one Grok agent to another on Base, using the x402 protocol. In Grok, run the <code>pay-agent</code> skill with <code>/pay-agent</code>.</p>
+          <ul>
+            <li>The payee receives the <strong>listed price</strong>. The buyer pays the <a href="/pricing">5% fee</a> on top.</li>
+            <li>The minimum payment is <strong>$0.10</strong> (<code>100000</code> atomic USDC).</li>
+            <li>Amounts are atomic USDC strings with 6 decimals: <code>500000</code> is $0.50.</li>
+            <li>Only Base USDC is supported (<code>eip155:8453</code>). Microdrip checks EIP-3009 signatures locally and settles through the PayAI facilitator.</li>
+          </ul>
+        </section>
+
+        <section id="demo" aria-labelledby="demo-title">
+          <h2 id="demo-title">Interactive demo</h2>
+          <p>Research bot buys a dataset from Data bot. Press send to run <code>/pay-agent</code>, approve the payment request, and watch the receipt and balances update. Turn on <strong>Raw HTTP</strong> to see the exact requests, headers, and decoded JSON.</p>
+          <div class="gd-mount" id="grok-demo" data-demo>
+            <noscript><p class="callout">The interactive demo needs JavaScript. The same requests are shown in <a href="#api-payments">POST /v1/payments</a>.</p></noscript>
+          </div>
+          <p class="small muted">Simulated, no funds move. The demo runs entirely in your browser: no network calls and no keys. Addresses, signatures, and transaction ids are made up, but every request and response has the same shape as the real service, and the fee uses the real rule.</p>
+        </section>
+
+        <section id="quickstart" aria-labelledby="quickstart-title">
+          <h2 id="quickstart-title">Quickstart</h2>
+          <p>You can do all of this from the <a href="/#register">home page</a>. The same steps with curl:</p>
+          <div class="code">
+            <div class="code-head"><span>Register, create a key, read books</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre><span class="c"># 1. Register. Prices are atomic USDC: 500000 = $0.50</span>
+curl -i -c cookies.txt http://127.0.0.1:4020/v1/register \
+  -H "content-type: application/json" \
+  -d '{"baseAddress":"0xYourBaseAddress","priceAtomic":"500000","costAtomic":"200000"}'
+<span class="c"># 201 {"id":"&lt;recipient id&gt;"} and an mp_session cookie</span>
+
+<span class="c"># 2. Create an API key with that session</span>
+curl -b cookies.txt -X POST http://127.0.0.1:4020/v1/keys
+<span class="c"># 201 {"apiKey":"mp_&lt;64 hex&gt;"}</span>
+
+<span class="c"># 3. Read your books</span>
+curl http://127.0.0.1:4020/v1/books -H "Authorization: Bearer mp_..."</pre>
+          </div>
+          <p>Share your <strong>recipient id</strong> with bots that should pay you. Keep the API key secret: it identifies your registration on every call.</p>
+        </section>
+
+        <section id="payment-flow" aria-labelledby="flow-title">
+          <h2 id="flow-title">How a payment works</h2>
+          <ol class="flow">
+            <li><strong>Ask.</strong> The buyer calls <code>POST /v1/payments</code> with its key, the recipient id, and the listed price.</li>
+            <li><strong>Challenge.</strong> Microdrip answers <code>402</code> with a Base USDC challenge in the <code>PAYMENT-REQUIRED</code> header. Its <code>amount</code> is the buyer total: the listed price plus the 5% fee.</li>
+            <li><strong>Sign.</strong> The buyer signs two EIP-3009 authorizations: the listed price to the recipient Base address (<code>payTo</code>), and the fee to the platform (<code>extra.feePayTo</code>). It retries with both in <code>PAYMENT-SIGNATURE</code> and leaves the challenge amount unchanged.</li>
+            <li><strong>Settle.</strong> Microdrip verifies both signatures and settles both transfers. The payment finishes only when both settle.</li>
+            <li><strong>Receipt.</strong> The answer is <code>200</code> with a <code>PAYMENT-RESPONSE</code> receipt. The payee's <code>/v1/books</code> credit goes up by the listed price.</li>
+          </ol>
+          <div class="callout callout-warn">
+            <p>When <code>platformBaseAddress</code> in <code>config.json</code> is empty, the service returns <code>503 platform_unconfigured</code> and no challenge, so the payment stays unavailable.</p>
+          </div>
+        </section>
+
+        <section id="pay-agent" aria-labelledby="pay-agent-title">
+          <h2 id="pay-agent-title">Pay another agent with <code>/pay-agent</code></h2>
+          <p>The <code>pay-agent</code> skill (<code>.grok/skills/pay-agent/SKILL.md</code>) sends a payment from one Grok agent to another on this service. Tell the skill who pays, who is paid, and the listed price:</p>
+          <ul>
+            <li><strong>Who pays:</strong> the sender's API key, sent as <code>Authorization: Bearer</code>.</li>
+            <li><strong>Who is paid:</strong> the recipient id from registration (not a Base address).</li>
+            <li><strong>Listed price:</strong> the atomic amount the payee receives, at least <code>100000</code>. It is not the buyer total.</li>
+          </ul>
+          <p>The skill handles the challenge, signs both authorizations, retries, and reports the receipt. That is exactly what the <a href="#demo">demo</a> walks through.</p>
+        </section>
+
+        <section id="api" aria-labelledby="api-title">
+          <h2 id="api-title">API reference</h2>
+          <p>All bodies are JSON. Amounts are strings of atomic USDC. Authenticated routes take <code>Authorization: Bearer &lt;apiKey&gt;</code>.</p>
+
+          <div class="endpoint" id="api-register"><span class="method method-post">POST</span><h3>/v1/register</h3></div>
+          <p>Registers the address that gets paid. Sets an HttpOnly <code>mp_session</code> cookie used by <code>/v1/keys</code>.</p>
+          <div class="code">
+            <div class="code-head"><span>Request → 201</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>POST /v1/register
+content-type: application/json
+
+{"baseAddress":"0xYourBaseAddress","priceAtomic":"500000","costAtomic":"200000"}
+
+HTTP/1.1 201 Created
+set-cookie: mp_session=...; HttpOnly; Path=/; SameSite=Lax
+
+{"id":"&lt;recipient id&gt;"}</pre>
+          </div>
+
+          <div class="endpoint" id="api-keys"><span class="method method-post">POST</span><h3>/v1/keys</h3></div>
+          <p>Creates an API key for the registration in the session cookie. The key is returned once.</p>
+          <div class="code">
+            <div class="code-head"><span>Request → 201</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>POST /v1/keys
+cookie: mp_session=...
+
+HTTP/1.1 201 Created
+
+{"apiKey":"mp_&lt;64 hex&gt;"}</pre>
+          </div>
+
+          <div class="endpoint" id="api-books"><span class="method method-get">GET</span><h3>/v1/books</h3></div>
+          <p>Reads the books for the key's registration. <code>creditedAtomic</code> is the listed price times settled payments. <code>feeAtomic</code> is the fees buyers paid to the platform on those payments.</p>
+          <div class="code">
+            <div class="code-head"><span>Request → 200</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>GET /v1/books
+Authorization: Bearer mp_...
+
+HTTP/1.1 200 OK
+
+{"creditedAtomic":"500000","feeAtomic":"25000","settledCount":1,"priceAtomic":"500000","costAtomic":"200000"}</pre>
+          </div>
+
+          <div class="endpoint" id="api-payments"><span class="method method-post">POST</span><h3>/v1/payments</h3></div>
+          <p>Pays another registered agent. The first call returns the challenge. The retry with <code>PAYMENT-SIGNATURE</code> settles it.</p>
+          <div class="code">
+            <div class="code-head"><span>1. Ask → 402</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>POST /v1/payments
+Authorization: Bearer &lt;sender key&gt;
+content-type: application/json
+
+{"recipient":"&lt;recipient id&gt;","amount":"500000"}
+
+HTTP/1.1 402 Payment Required
+PAYMENT-REQUIRED: eyJ4NDAyVmVyc2lvbiI6Mi... (base64 JSON, see Payment headers)
+
+{"error":"PAYMENT-SIGNATURE header is required"}</pre>
+          </div>
+          <div class="code">
+            <div class="code-head"><span>2. Retry with signatures → 200</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>POST /v1/payments
+Authorization: Bearer &lt;sender key&gt;
+content-type: application/json
+PAYMENT-SIGNATURE: eyJ4NDAyVmVyc2lvbiI6Mi... (base64 JSON)
+
+{"recipient":"&lt;recipient id&gt;","amount":"500000"}
+
+HTTP/1.1 200 OK
+PAYMENT-RESPONSE: eyJzdWNjZXNzIjp0cnVl... (base64 JSON)
+
+{"settled":true,"amount":"500000","network":"eip155:8453","recipient":"&lt;recipient id&gt;"}</pre>
+          </div>
+
+          <div class="endpoint" id="api-resource"><span class="method method-get">GET</span><span class="method method-post">POST</span><h3>{{resourcePath}}</h3></div>
+          <p>The metered resource for a merchant. Send the merchant's key. It costs that merchant's registered price, with the same 402, sign, and retry flow. It answers <code>503</code> if the price is not above the cost or is under the minimum.</p>
+          <div class="code">
+            <div class="code-head"><span>Paid response → 200</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>HTTP/1.1 200 OK
+PAYMENT-RESPONSE: eyJzdWNjZXNzIjp0cnVl...
+
+{"delivered":true,"service":"microdrip","unit":"request"}</pre>
+          </div>
+        </section>
+
+        <section id="headers" aria-labelledby="headers-title">
+          <h2 id="headers-title">Payment headers</h2>
+          <p>Each header is base64 of UTF-8 JSON.</p>
+          <h3 id="header-required"><code>PAYMENT-REQUIRED</code> (the challenge)</h3>
+          <p><code>accepts</code> has one Base entry. <code>amount</code> is the buyer total. <code>extra.feeAmount</code> is the 5% fee and <code>extra.feePayTo</code> is the platform address. <code>extra.name</code> and <code>extra.version</code> name the EIP-712 domain, and <code>asset</code> is the verifying contract.</p>
+          <div class="code">
+            <div class="code-head"><span>PAYMENT-REQUIRED, decoded</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>{
+  "x402Version": 2,
+  "error": "PAYMENT-SIGNATURE header is required",
+  "resource": {
+    "url": "http://127.0.0.1:4020/v1/payments",
+    "description": "Metered HTTP response",
+    "mimeType": "application/json",
+    "serviceName": "microdrip"
+  },
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "eip155:8453",
+      "amount": "525000",
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "payTo": "&lt;recipient Base address&gt;",
+      "maxTimeoutSeconds": 300,
+      "extra": {
+        "name": "USD Coin",
+        "version": "2",
+        "feeAmount": "25000",
+        "feePayTo": "&lt;platform Base address&gt;"
+      }
+    }
+  ]
+}</pre>
+          </div>
+          <h3 id="header-signature"><code>PAYMENT-SIGNATURE</code> (the retry)</h3>
+          <p>Copy <code>accepts[0]</code> into <code>accepted</code> unchanged. Sign each authorization as EIP-712 <code>TransferWithAuthorization</code> with chainId <code>8453</code>. <code>validAfter</code> must be before now and <code>validBefore</code> after now. The two nonces must differ.</p>
+          <div class="code">
+            <div class="code-head"><span>PAYMENT-SIGNATURE, decoded</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>{
+  "x402Version": 2,
+  "accepted": { "...": "accepts[0] from the challenge, amount still 525000" },
+  "payload": {
+    "authorization": {
+      "from": "&lt;buyer address&gt;",
+      "to": "&lt;payTo&gt;",
+      "value": "500000",
+      "validAfter": "0",
+      "validBefore": "&lt;now + 300&gt;",
+      "nonce": "0x&lt;32 random bytes&gt;"
+    },
+    "signature": "0x&lt;65-byte EIP-712 signature&gt;",
+    "feeAuthorization": {
+      "from": "&lt;buyer address&gt;",
+      "to": "&lt;extra.feePayTo&gt;",
+      "value": "25000",
+      "validAfter": "0",
+      "validBefore": "&lt;now + 300&gt;",
+      "nonce": "0x&lt;different 32 random bytes&gt;"
+    },
+    "feeSignature": "0x&lt;65-byte EIP-712 signature&gt;"
+  }
+}</pre>
+          </div>
+          <h3 id="header-response"><code>PAYMENT-RESPONSE</code> (the receipt)</h3>
+          <p><code>transaction</code> is the payee transfer, <code>feeTransaction</code> is the platform fee, and <code>amount</code> equals the quote.</p>
+          <div class="code">
+            <div class="code-head"><span>PAYMENT-RESPONSE, decoded</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>{
+  "success": true,
+  "transaction": "0x&lt;payee transaction&gt;",
+  "feeTransaction": "0x&lt;fee transaction&gt;",
+  "network": "eip155:8453",
+  "payer": "&lt;buyer address&gt;",
+  "amount": "525000"
+}</pre>
+          </div>
+        </section>
+
+        <section id="errors" aria-labelledby="errors-title">
+          <h2 id="errors-title">Errors</h2>
+          <p>Errors are JSON: <code>{"error":"&lt;code&gt;"}</code>. A <code>402</code> always carries a fresh <code>PAYMENT-REQUIRED</code> challenge whose <code>error</code> field repeats the reason.</p>
+          <h3>Request errors</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Status</th><th>Code</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td>400</td><td><code>invalid_json</code></td><td>The body is not valid JSON.</td></tr>
+              <tr><td>413</td><td><code>body_too_large</code></td><td>The body is over 64 KB.</td></tr>
+              <tr><td>400</td><td><code>base_address_invalid</code></td><td>Registration needs a <code>0x</code> address with 40 hex characters.</td></tr>
+              <tr><td>400</td><td><code>price_invalid</code> / <code>cost_invalid</code></td><td>Price and cost must be whole atomic USDC strings.</td></tr>
+              <tr><td>401</td><td><code>session_required</code></td><td><code>/v1/keys</code> needs the session cookie from registration.</td></tr>
+              <tr><td>401</td><td><code>api_key_required</code></td><td>No <code>Authorization: Bearer</code> key was sent.</td></tr>
+              <tr><td>401</td><td><code>unknown_api_key</code></td><td>The key does not belong to any registration.</td></tr>
+              <tr><td>400</td><td><code>recipient_required</code></td><td><code>recipient</code> is missing.</td></tr>
+              <tr><td>404</td><td><code>recipient_unknown</code></td><td>No registration has that recipient id.</td></tr>
+              <tr><td>400</td><td><code>recipient_is_sender</code></td><td>An agent cannot pay itself.</td></tr>
+              <tr><td>400</td><td><code>amount_invalid</code></td><td><code>amount</code> must be a positive whole atomic USDC string.</td></tr>
+              <tr><td>400 / 503</td><td><code>amount_below_minimum</code></td><td>The amount, or the merchant's price, is under $0.10.</td></tr>
+              <tr><td>503</td><td><code>price_not_above_cost</code></td><td>The merchant's price is not strictly above its cost, so nothing is sold.</td></tr>
+              <tr><td>503</td><td><code>platform_unconfigured</code></td><td>The operator has not set <code>platformBaseAddress</code>.</td></tr>
+              <tr><td>404</td><td><code>not_found</code></td><td>Unknown route.</td></tr>
+              <tr><td>405</td><td><code>method_not_allowed</code></td><td>The resource only takes GET or POST.</td></tr>
+              <tr><td>500</td><td><code>server_error</code> / <code>settlement_failed</code></td><td>Something failed on the server.</td></tr>
+            </tbody>
+          </table></div>
+          <h3>Payment errors (402)</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><code>PAYMENT-SIGNATURE header is required</code></td><td>The first, unpaid call. Sign the challenge and retry.</td></tr>
+              <tr><td><code>malformed_payment</code></td><td>The header is not base64 JSON, or fields are missing or badly formed.</td></tr>
+              <tr><td><code>wrong_version</code></td><td><code>x402Version</code> must be <code>2</code>.</td></tr>
+              <tr><td><code>unsupported_scheme</code></td><td>Only the <code>exact</code> scheme with EIP-3009 authorizations is accepted.</td></tr>
+              <tr><td><code>network_mismatch</code></td><td>Only <code>eip155:8453</code> (Base) is accepted.</td></tr>
+              <tr><td><code>wrong_asset</code></td><td>The asset or EIP-712 domain is not Base USDC.</td></tr>
+              <tr><td><code>wrong_recipient</code></td><td>The payee authorization is not to <code>payTo</code>.</td></tr>
+              <tr><td><code>amount_mismatch</code></td><td><code>accepted.amount</code> was changed, or the payee value is above the price.</td></tr>
+              <tr><td><code>value_below_price</code></td><td>The payee authorization is below the listed price.</td></tr>
+              <tr><td><code>expired</code> / <code>not_yet_valid</code></td><td>Now is not strictly between <code>validAfter</code> and <code>validBefore</code>.</td></tr>
+              <tr><td><code>bad_signature</code></td><td>A signature does not recover to <code>from</code>.</td></tr>
+              <tr><td><code>fee_required</code></td><td>The fee authorization or signature is missing.</td></tr>
+              <tr><td><code>fee_payer_mismatch</code></td><td>The fee must come from the same buyer.</td></tr>
+              <tr><td><code>wrong_fee_recipient</code></td><td>The fee is not to <code>extra.feePayTo</code>.</td></tr>
+              <tr><td><code>fee_mismatch</code></td><td>The fee value is not <code>extra.feeAmount</code>.</td></tr>
+              <tr><td><code>fee_reused</code></td><td>The fee nonce repeats the payee nonce.</td></tr>
+              <tr><td><code>nonce_replayed</code></td><td>The nonce was already used. A replay of a settled payment gets its original receipt instead.</td></tr>
+              <tr><td><code>settle_failed</code></td><td>Settlement did not go through. The facilitator's own reason, such as <code>invalid_exact_evm_insufficient_balance</code>, may appear instead.</td></tr>
+              <tr><td><code>missing_transaction</code> / <code>missing_fee_transaction</code></td><td>Settlement returned no transaction id, so nothing is credited.</td></tr>
+            </tbody>
+          </table></div>
+        </section>
+
+        <section id="local" aria-labelledby="local-title">
+          <h2 id="local-title">Run locally</h2>
+          <div class="code">
+            <div class="code-head"><span>Terminal</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+<pre>npm install
+<span class="c"># Set platformBaseAddress in config.json to the operator's Base address first</span>
+npm start
+<span class="c"># open http://127.0.0.1:4020</span>
+
+<span class="c"># Tests (browser tests need Chrome)</span>
+CHROME_PATH=/usr/bin/google-chrome npm test</pre>
+          </div>
+          <div class="callout callout-warn">
+            <p>Payments are real USDC on Base mainnet. Start the local service with <code>npm start</code>, then open <code>http://127.0.0.1:4020</code>. <code>https://microdrip.xyz</code> does not serve payments.</p>
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <span>Microdrip &middot; x402 payments in USDC on Base</span>
+      <nav aria-label="Footer">
+        <a href="/">Home</a>
+        <a href="/docs">Docs</a>
+        <a href="/docs#demo">Demo</a>
         <a href="/pricing">Pricing</a>
       </nav>
-    </header>
-    <h1>Pay another agent</h1>
-    <p>Use the <code>pay-agent</code> skill. In Grok, run <code>/pay-agent</code>.</p>
-    <p>That skill sends a payment from one Grok agent to another on this service. The fee is <a href="/pricing">5% per transaction</a>.</p>
-    <h2>How the skill works</h2>
-    <section class="chat" aria-label="Grok bots">
-      <div class="chat-bar">
-        <p class="chat-title">Grok bots</p>
-        <div class="roster">
-          <div class="bot" data-bot="ada">
-            <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
-              <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
-              <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
-              <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
-              <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
-              <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
-              <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
-            </svg>
-            <span class="bot-name">Ada</span>
-          </div>
-          <div class="bot" data-bot="nia">
-            <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
-              <rect x="4" y="4" width="56" height="56" rx="20" fill="#33363c"></rect>
-              <circle cx="23" cy="30" r="4.5" fill="#ffffff"></circle>
-              <circle cx="43" cy="26" r="4.5" fill="#ffffff"></circle>
-              <circle cx="23" cy="30" r="2" fill="#15b3ad"></circle>
-              <circle cx="43" cy="26" r="2" fill="#15b3ad"></circle>
-              <path d="M24 44h16" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
-            </svg>
-            <span class="bot-name">Nia</span>
-          </div>
-        </div>
-      </div>
-      <div class="transcript" role="log">
-        <article class="msg" data-moment="price" data-speaker="ada" data-current="true">
-          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
-            <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
-            <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
-            <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
-            <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
-            <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
-            <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
-          </svg>
-          <div class="msg-body">
-            <span class="speaker">Ada</span>
-            <div class="bubble">
-              <p><code>/pay-agent</code></p>
-              <p>Tell the skill who pays, who is paid, and the listed price. Ada pays Nia. The payee receives that price. The buyer pays the fee on top. The minimum is $0.10.</p>
-            </div>
-          </div>
-        </article>
-        <article class="msg" data-moment="challenge" data-speaker="ada" hidden>
-          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
-            <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
-            <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
-            <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
-            <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
-            <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
-            <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
-          </svg>
-          <div class="msg-body">
-            <span class="speaker">Ada</span>
-            <div class="bubble">
-              <p>The first answer is a Base USDC challenge. The amount on that challenge is the buyer total: the listed price plus the 5% fee.</p>
-            </div>
-          </div>
-        </article>
-        <article class="msg" data-moment="sign" data-speaker="ada" hidden>
-          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
-            <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
-            <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
-            <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
-            <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
-            <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
-            <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
-          </svg>
-          <div class="msg-body">
-            <span class="speaker">Ada</span>
-            <div class="bubble">
-              <p>The skill signs two authorizations. One pays the listed price to the recipient Base address. The other pays the fee to the platform. It sends both signatures back and leaves the challenge amount unchanged.</p>
-            </div>
-          </div>
-        </article>
-        <article class="msg" data-moment="settled" data-speaker="nia" hidden>
-          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
-            <rect x="4" y="4" width="56" height="56" rx="20" fill="#33363c"></rect>
-            <circle cx="23" cy="30" r="4.5" fill="#ffffff"></circle>
-            <circle cx="43" cy="26" r="4.5" fill="#ffffff"></circle>
-            <circle cx="23" cy="30" r="2" fill="#15b3ad"></circle>
-            <circle cx="43" cy="26" r="2" fill="#15b3ad"></circle>
-            <path d="M24 44h16" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
-          </svg>
-          <div class="msg-body">
-            <span class="speaker">Nia</span>
-            <div class="bubble">
-              <p>The payment finishes when both transfers settle. The payee receives the listed price. The platform receives the fee.</p>
-            </div>
-          </div>
-        </article>
-      </div>
-      <div class="composer">
-        <div class="composer-field">
-          <span class="slash">/pay-agent</span>
-          <input type="text" readonly value="Pay Nia the listed price" aria-label="Message">
-        </div>
-        <button type="button" class="send" disabled aria-label="Send">
-          <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </button>
-      </div>
-      <div class="controls">
-        <button type="button" data-step="back" disabled>Back</button>
-        <p data-progress>1 of 4</p>
-        <button type="button" data-step="next">Next</button>
-      </div>
-    </section>
-    <script>
-      (function () {
-        var moments = Array.prototype.slice.call(document.querySelectorAll("[data-moment]"));
-        var back = document.querySelector("[data-step='back']");
-        var next = document.querySelector("[data-step='next']");
-        var progress = document.querySelector("[data-progress]");
-        var index = 0;
-        function show(nextIndex) {
-          if (!moments.length) return;
-          index = Math.max(0, Math.min(moments.length - 1, nextIndex));
-          moments.forEach(function (node, i) {
-            node.hidden = i > index;
-            if (i === index) node.setAttribute("data-current", "true");
-            else node.removeAttribute("data-current");
-          });
-          if (back) back.disabled = index === 0;
-          if (next) next.disabled = index === moments.length - 1;
-          if (progress) progress.textContent = (index + 1) + " of " + moments.length;
-        }
-        if (back) back.addEventListener("click", function () { show(index - 1); });
-        if (next) next.addEventListener("click", function () { show(index + 1); });
-        show(0);
-      })();
-    </script>
-    <p>The skill signs those authorizations. This service settles both transfers on Base.</p>
-    <p>When the platform address is still empty, the service returns no challenge and the payment stays unavailable.</p>
-    <p>Start the local service with <code>npm start</code>, then open <code>http://127.0.0.1:4020</code>. <code>https://microdrip.xyz</code> does not serve payments.</p>
-  </main>
+    </div>
+  </footer>
+  <script src="/ui.js"></script>
+  <script src="/demo.js"></script>
 </body>
 </html>
