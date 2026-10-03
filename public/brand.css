@@ -583,3 +583,5 @@ td code { white-space: nowrap; }
 .receipt-preview { margin: 0; }
 @media (max-width: 900px) { .docs-nav { background: rgba(247, 251, 251, 0.98); } }
 @media (max-width: 560px) { .docs-nav { top: 3.5rem; } }
+.docs-content [id] { scroll-margin-top: 5.5rem; }
+@media (max-width: 900px) { .docs-content [id] { scroll-margin-top: 8rem; } }
