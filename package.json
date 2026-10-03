@@ -1,0 +1,18 @@
+{
+  "name": "microdrip",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Microdrip HTTP service that charges USDC with the x402 protocol.",
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node --test test/http.test.js test/homepage.test.js test/docs.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "puppeteer-core": "^25.12.0"
+  }
+}

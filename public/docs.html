@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/brand.css">
+  <title>Microdrip pay</title>
+</head>
+<body class="docs">
+  <main>
+    <header class="top">
+      <a class="lockup" href="/">
+        <img class="mark" src="/mark.png" alt="" width="181" height="368">
+        <span class="words">
+          <span class="name">Microdrip</span>
+          <span class="tag">Agent payments</span>
+        </span>
+      </a>
+      <nav>
+        <a href="/">Register</a>
+        <a href="/docs" aria-current="page">Pay</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </header>
+    <h1>Pay another agent</h1>
+    <p>Use the <code>pay-agent</code> skill. In Grok, run <code>/pay-agent</code>.</p>
+    <p>That skill sends a payment from one Grok agent to another on this service. The fee is <a href="/pricing">5% per transaction</a>.</p>
+    <h2>How the skill works</h2>
+    <section class="chat" aria-label="Grok bots">
+      <div class="chat-bar">
+        <p class="chat-title">Grok bots</p>
+        <div class="roster">
+          <div class="bot" data-bot="ada">
+            <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
+              <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
+              <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
+              <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
+              <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
+              <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
+            </svg>
+            <span class="bot-name">Ada</span>
+          </div>
+          <div class="bot" data-bot="nia">
+            <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+              <rect x="4" y="4" width="56" height="56" rx="20" fill="#33363c"></rect>
+              <circle cx="23" cy="30" r="4.5" fill="#ffffff"></circle>
+              <circle cx="43" cy="26" r="4.5" fill="#ffffff"></circle>
+              <circle cx="23" cy="30" r="2" fill="#15b3ad"></circle>
+              <circle cx="43" cy="26" r="2" fill="#15b3ad"></circle>
+              <path d="M24 44h16" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
+            </svg>
+            <span class="bot-name">Nia</span>
+          </div>
+        </div>
+      </div>
+      <div class="transcript" role="log">
+        <article class="msg" data-moment="price" data-speaker="ada" data-current="true">
+          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
+            <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
+            <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
+            <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
+            <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
+            <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
+          </svg>
+          <div class="msg-body">
+            <span class="speaker">Ada</span>
+            <div class="bubble">
+              <p><code>/pay-agent</code></p>
+              <p>Tell the skill who pays, who is paid, and the listed price. Ada pays Nia. The payee receives that price. The buyer pays the fee on top. The minimum is $0.10.</p>
+            </div>
+          </div>
+        </article>
+        <article class="msg" data-moment="challenge" data-speaker="ada" hidden>
+          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
+            <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
+            <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
+            <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
+            <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
+            <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
+          </svg>
+          <div class="msg-body">
+            <span class="speaker">Ada</span>
+            <div class="bubble">
+              <p>The first answer is a Base USDC challenge. The amount on that challenge is the buyer total: the listed price plus the 5% fee.</p>
+            </div>
+          </div>
+        </article>
+        <article class="msg" data-moment="sign" data-speaker="ada" hidden>
+          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="32" r="30" fill="#15b3ad"></circle>
+            <circle cx="23" cy="28" r="4.5" fill="#ffffff"></circle>
+            <circle cx="41" cy="28" r="4.5" fill="#ffffff"></circle>
+            <circle cx="23" cy="28" r="2" fill="#33363c"></circle>
+            <circle cx="41" cy="28" r="2" fill="#33363c"></circle>
+            <path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
+          </svg>
+          <div class="msg-body">
+            <span class="speaker">Ada</span>
+            <div class="bubble">
+              <p>The skill signs two authorizations. One pays the listed price to the recipient Base address. The other pays the fee to the platform. It sends both signatures back and leaves the challenge amount unchanged.</p>
+            </div>
+          </div>
+        </article>
+        <article class="msg" data-moment="settled" data-speaker="nia" hidden>
+          <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+            <rect x="4" y="4" width="56" height="56" rx="20" fill="#33363c"></rect>
+            <circle cx="23" cy="30" r="4.5" fill="#ffffff"></circle>
+            <circle cx="43" cy="26" r="4.5" fill="#ffffff"></circle>
+            <circle cx="23" cy="30" r="2" fill="#15b3ad"></circle>
+            <circle cx="43" cy="26" r="2" fill="#15b3ad"></circle>
+            <path d="M24 44h16" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
+          </svg>
+          <div class="msg-body">
+            <span class="speaker">Nia</span>
+            <div class="bubble">
+              <p>The payment finishes when both transfers settle. The payee receives the listed price. The platform receives the fee.</p>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="composer">
+        <div class="composer-field">
+          <span class="slash">/pay-agent</span>
+          <input type="text" readonly value="Pay Nia the listed price" aria-label="Message">
+        </div>
+        <button type="button" class="send" disabled aria-label="Send">
+          <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="controls">
+        <button type="button" data-step="back" disabled>Back</button>
+        <p data-progress>1 of 4</p>
+        <button type="button" data-step="next">Next</button>
+      </div>
+    </section>
+    <script>
+      (function () {
+        var moments = Array.prototype.slice.call(document.querySelectorAll("[data-moment]"));
+        var back = document.querySelector("[data-step='back']");
+        var next = document.querySelector("[data-step='next']");
+        var progress = document.querySelector("[data-progress]");
+        var index = 0;
+        function show(nextIndex) {
+          if (!moments.length) return;
+          index = Math.max(0, Math.min(moments.length - 1, nextIndex));
+          moments.forEach(function (node, i) {
+            node.hidden = i > index;
+            if (i === index) node.setAttribute("data-current", "true");
+            else node.removeAttribute("data-current");
+          });
+          if (back) back.disabled = index === 0;
+          if (next) next.disabled = index === moments.length - 1;
+          if (progress) progress.textContent = (index + 1) + " of " + moments.length;
+        }
+        if (back) back.addEventListener("click", function () { show(index - 1); });
+        if (next) next.addEventListener("click", function () { show(index + 1); });
+        show(0);
+      })();
+    </script>
+    <p>The skill signs those authorizations. This service settles both transfers on Base.</p>
+    <p>When the platform address is still empty, the service returns no challenge and the payment stays unavailable.</p>
+    <p>Start the local service with <code>npm start</code>, then open <code>http://127.0.0.1:4020</code>. <code>https://microdrip.xyz</code> does not serve payments.</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Microdrip</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; background: #f4f0e6; color: #1c1915; }
+    main { max-width: 40rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    h1 { font-size: 2rem; line-height: 1.1; margin: 0 0 0.5rem; }
+    p { line-height: 1.45; }
+    form, section { background: #fffdf8; border: 1px solid #d9d0c1; border-radius: 12px; padding: 1rem; margin-top: 1rem; }
+    label { display: block; font-family: "Avenir Next", "Segoe UI", sans-serif; font-size: 0.92rem; margin-top: 0.85rem; }
+    input { width: 100%; box-sizing: border-box; margin-top: 0.3rem; padding: 0.7rem 0.75rem; font-size: 1rem; border: 1px solid #b7ad9e; border-radius: 8px; background: #fff; }
+    button { margin-top: 1rem; padding: 0.75rem 1rem; font-size: 1rem; border: 0; border-radius: 8px; background: #1f4d3a; color: #fff; cursor: pointer; }
+    button:focus, input:focus { outline: 2px solid #1f4d3a; outline-offset: 2px; }
+    #form-error { min-height: 1.2em; color: #8d1d18; font-family: "Avenir Next", "Segoe UI", sans-serif; }
+    #api-key { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; overflow-wrap: anywhere; background: #f4f0e6; padding: 0.75rem; border-radius: 8px; }
+    a { color: #1f4d3a; }
+    code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+    @media (max-width: 480px) {
+      main { padding: 1rem 0.85rem 2rem; }
+      h1 { font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Microdrip</h1>
+    <p>Register the Base address that should receive USDC. Set a price above your cost, then create an API key. Your agent uses that key to accept x402 payments on Base.</p>
+    <p><a href="/docs">Pay another agent</a> · <a href="/pricing">Pricing</a></p>
+    <p id="agent-instructions">Your agent sends header <code>Authorization: Bearer</code> and the API key on <code>GET {{resourcePath}}</code>.</p>
+    <form id="register-form">
+      <label for="base-address">Base address
+        <input id="base-address" name="baseAddress" autocomplete="off" required>
+      </label>
+      <label for="price">Price in atomic USDC
+        <input id="price" name="priceAtomic" inputmode="numeric" autocomplete="off" required>
+      </label>
+      <label for="cost">Your cost in atomic USDC
+        <input id="cost" name="costAtomic" inputmode="numeric" autocomplete="off" required>
+      </label>
+      <button id="register-button" type="submit">Register</button>
+      <p id="form-error" role="alert"></p>
+    </form>
+    <section id="key-section" hidden>
+      <h2>API key</h2>
+      <p>Create a key for this registration. It is shown here once you create it.</p>
+      <button id="create-key" type="button">Create API key</button>
+      <p id="api-key"></p>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
