@@ -4,12 +4,12 @@ import http from "node:http";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { findChrome } from "./chrome.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pagePath = path.join(root, "site", "index.html");
 const scratch = process.env.X402_SCRATCH || "";
-const chromePath = process.env.CHROME_PATH
-  || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const chromePath = findChrome();
 
 function writeLog(name, text) {
   if (!scratch) return;

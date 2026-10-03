@@ -13,12 +13,12 @@ import { verifyBasePayment } from "../src/eip3009.js";
 import { applySettleResult } from "../src/facilitator.js";
 import { createLedger } from "../src/ledger.js";
 import { PAID_BODY } from "../src/resource.js";
+import { requireChrome } from "./chrome.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const defaultConfigPath = path.join(root, "config.json");
 const scratch = process.env.X402_SCRATCH || "";
-const chromePath = process.env.CHROME_PATH
-  || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
 
 const BASE_NETWORK = "eip155:8453";
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -845,12 +845,17 @@ function evaluatePageScript(source) {
     elements[id] = el;
     return el;
   }
-  for (const id of ["register-form", "form-error", "key-section", "create-key", "api-key", "base-address", "price", "cost"]) {
+  for (const id of [
+    "register-form", "register-button", "form-error", "key-section", "create-key", "api-key", "key-output",
+    "recipient-id", "bearer-snippet", "base-address", "price", "cost", "price-atomic", "cost-atomic",
+    "quote-price", "quote-fee", "quote-total", "quote-margin", "quote-warning",
+  ]) {
     element(id);
   }
+  elements["key-output"].hidden = true;
   elements["base-address"].value = Wallet.createRandom().address;
-  elements.price.value = "10000";
-  elements.cost.value = "1000";
+  elements.price.value = "0.01";
+  elements.cost.value = "0.001";
   const calls = [];
   const sandbox = {
     document: {
@@ -903,6 +908,26 @@ test("the website registers a user and shows an API key", async (t) => {
   assert.equal(source.includes("require("), false);
   assert.equal(source.includes("module.exports"), false);
   const evaluated = evaluatePageScript(source);
+  // Dollar inputs show atomic USDC and a live quote with the 5% fee.
+  evaluated.elements.price.value = "0.50";
+  evaluated.elements.cost.value = "0.20";
+  evaluated.elements.price.listeners.input();
+  assert.equal(evaluated.elements["price-atomic"].textContent, "= 500000 atomic USDC");
+  assert.equal(evaluated.elements["quote-price"].textContent, "$0.50");
+  assert.equal(evaluated.elements["quote-fee"].textContent, "$0.025");
+  assert.equal(evaluated.elements["quote-total"].textContent, "$0.525");
+  assert.equal(evaluated.elements["quote-margin"].textContent, "$0.30");
+  assert.equal(evaluated.elements["quote-warning"].textContent, "");
+  evaluated.elements.price.value = "0.01";
+  evaluated.elements.price.listeners.input();
+  assert.match(evaluated.elements["quote-warning"].textContent, /\$0\.10 minimum/);
+  // A bad amount is caught in the page with a readable message, before any request.
+  evaluated.elements.price.value = "abc";
+  await evaluated.elements["register-form"].listeners.submit({ preventDefault() {} });
+  assert.equal(evaluated.calls.length, 0);
+  assert.match(evaluated.elements["form-error"].textContent, /Enter a price in USDC/);
+  evaluated.elements.price.value = "0.01";
+  evaluated.elements.cost.value = "0.001";
   await evaluated.elements["register-form"].listeners.submit({ preventDefault() {} });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(evaluated.calls[0].url, "/v1/register");
@@ -914,17 +939,18 @@ test("the website registers a user and shows an API key", async (t) => {
   assert.equal(posted.priceAtomic, "10000");
   assert.equal(posted.costAtomic, "1000");
   assert.equal(evaluated.elements["key-section"].hidden, false);
+  assert.equal(evaluated.elements["recipient-id"].textContent, "user");
   await evaluated.elements["create-key"].listeners.click();
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(evaluated.calls[1].url, "/v1/keys");
   assert.equal(evaluated.calls[1].options.method, "POST");
   assert.match(evaluated.elements["api-key"].textContent, /^mp_[0-9a-f]{64}$/);
+  assert.equal(evaluated.elements["key-output"].hidden, false);
+  assert.match(evaluated.elements["bearer-snippet"].textContent, /Authorization: Bearer mp_[0-9a-f]{64}/);
 
   let browser;
   try {
-    if (!fs.existsSync(chromePath)) {
-      throw new Error(`Chrome is not installed at ${chromePath}`);
-    }
+    const chromePath = requireChrome();
     const puppeteer = await import("puppeteer-core");
     browser = await puppeteer.default.launch({
       executablePath: chromePath,
@@ -933,30 +959,53 @@ test("the website registers a user and shows an API key", async (t) => {
     });
   } catch (error) {
     writeLog("browser-failure.txt", error instanceof Error ? error.stack ?? error.message : String(error));
-    browser = null;
+    throw error;
   }
-
-  if (!browser) return;
 
   try {
     const errors = [];
     async function exercise(width, height, shotName) {
       const page = await browser.newPage();
       page.on("pageerror", (error) => errors.push(String(error)));
+      let expected401 = false;
       page.on("console", (message) => {
-        if (message.type() === "error") errors.push(message.text());
+        if (message.type() !== "error") return;
+        // The unknown-key check below makes Chrome log the 401 it was meant to provoke.
+        if (expected401 && /status of 401/.test(message.text())) return;
+        errors.push(message.text());
       });
       await page.setViewport({ width, height });
       await page.goto(server.origin, { waitUntil: "networkidle0" });
       const who = await merchant();
       await page.locator("#base-address").fill(who.baseAddress);
-      await page.locator("#price").fill("100000");
-      await page.locator("#cost").fill("1000");
+      await page.locator("#price").fill("0.10");
+      await page.locator("#cost").fill("0.001");
+      assert.equal(await page.$eval("#quote-total", (node) => node.textContent), "$0.105");
       await page.locator("#register-button").click();
       await page.waitForSelector("#key-section:not([hidden])");
+      const recipientId = await page.$eval("#recipient-id", (node) => node.textContent.trim());
+      assert.match(recipientId, /^[0-9a-f]{32}$/);
       await page.locator("#create-key").click();
       await page.waitForFunction(() => /^mp_[0-9a-f]{64}$/.test(document.querySelector("#api-key").textContent || ""));
       const apiKey = await page.$eval("#api-key", (node) => node.textContent.trim());
+      assert.equal(await page.$eval("#key-output", (node) => node.hidden), false);
+      assert.match(await page.$eval("#key-output", (node) => node.textContent), /Shown once/);
+      assert.match(await page.$eval("#bearer-snippet", (node) => node.textContent), new RegExp(`Authorization: Bearer ${apiKey}`));
+      assert.equal(await page.$$eval(".copy-btn[data-copy-target]", (nodes) => nodes.map((node) => node.getAttribute("data-copy-target")).join(" ")), "#recipient-id #api-key");
+      // The books panel reads GET /v1/books with the new key and shows the empty state.
+      assert.equal(await page.$eval("#books-key", (node) => node.value), apiKey);
+      await page.locator("#books-button").click();
+      await page.waitForSelector("#books-result:not([hidden])");
+      assert.equal(await page.$eval("#books-credited", (node) => node.textContent), "$0.00");
+      assert.equal(await page.$eval("#books-count", (node) => node.textContent), "0");
+      assert.equal(await page.$eval("#books-empty", (node) => node.hidden), false);
+      assert.equal(await page.$eval("#books-idle", (node) => node.hidden), true);
+      assert.match(await page.$eval("#books-terms", (node) => node.textContent), /Listed price \$0\.10/);
+      expected401 = true;
+      await page.$eval("#books-key", (node) => { node.value = `mp_${"0".repeat(64)}`; });
+      await page.locator("#books-button").click();
+      await page.waitForFunction(() => document.querySelector("#books-error").textContent !== "");
+      assert.match(await page.$eval("#books-error", (node) => node.textContent), /doesn't recognise that API key/);
       const instructions = await page.$eval("#agent-instructions", (node) => node.textContent);
       assert.match(instructions, /Authorization:\s*Bearer/);
       assert.match(instructions, /GET\s+\/v1\/resource/);
