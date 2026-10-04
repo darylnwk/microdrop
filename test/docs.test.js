@@ -364,9 +364,72 @@ async function press(page, selector) {
   await page.click(selector);
 }
 
+// WCAG relative luminance contrast between two computed "rgb(...)" colours.
+function contrast(a, b) {
+  const lum = (rgb) => {
+    const [r, g, b2] = rgb.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map((v) => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b2;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// The demo uses Grok Bot's dark chat style; the page around it keeps the light teal brand.
+async function checkDarkTheme(page) {
+  const look = await page.evaluate(() => {
+    const css = (selector, prop) => getComputedStyle(document.querySelector(selector))[prop];
+    return {
+      gd: css(".gd", "backgroundColor"),
+      gdText: css(".gd", "color"),
+      font: css(".gd", "fontFamily"),
+      body: css("body", "backgroundColor"),
+      bodyFont: css("body", "fontFamily"),
+      them: css('.gd-msg[data-from="data"] .gd-bubble', "backgroundColor"),
+      themText: css('.gd-msg[data-from="data"] .gd-bubble', "color"),
+      me: css('.gd-msg[data-from="research"] .gd-bubble', "backgroundColor"),
+      meText: css('.gd-msg[data-from="research"] .gd-bubble', "color"),
+      meSide: document.querySelector('.gd-msg[data-from="research"]').getBoundingClientRect().right,
+      themSide: document.querySelector('.gd-msg[data-from="data"]').getBoundingClientRect().left,
+      logBox: (({ left, right }) => ({ left, right }))(document.querySelector(".gd-log").getBoundingClientRect()),
+      soft: css(".gd-pane-title span", "color"),
+      composer: css(".gd-composer", "backgroundColor"),
+      run: css(".gd-run", "backgroundColor"),
+      runText: css(".gd-run", "color"),
+      sim: css(".gd-sim", "color"),
+      bar: css(".gd-titlebar", "backgroundColor"),
+      name: document.querySelector(".gd-titlebar").textContent,
+    };
+  });
+  const channels = (rgb) => rgb.match(/\d+/g).slice(0, 3).map(Number);
+  assert.ok(Math.max(...channels(look.gd)) <= 20, `demo background is near-black, got ${look.gd}`);
+  assert.ok(Math.max(...channels(look.bar)) <= 30, `top bar is dark, got ${look.bar}`);
+  assert.ok(Math.max(...channels(look.composer)) <= 30, `input bar is dark, got ${look.composer}`);
+  assert.ok(Math.min(...channels(look.body)) >= 240, `page stays light, got ${look.body}`);
+  assert.match(look.font, /^system-ui/);
+  assert.notEqual(look.bodyFont, look.font);
+  assert.match(look.name, /Grok Bot/);
+  // Bot bubbles dark grey, user bubbles a little lighter and on the right.
+  const [them, me] = [channels(look.them)[0], channels(look.me)[0]];
+  assert.ok(them > channels(look.gd)[0] && me > them && me <= 64, `bubble greys: bot ${look.them}, user ${look.me}`);
+  assert.ok(look.logBox.right - look.meSide < 40, "user bubbles sit on the right");
+  assert.ok(look.themSide - look.logBox.left < 40, "bot bubbles sit on the left");
+  for (const [fg, bg, what] of [
+    [look.gdText, look.gd, "body text"],
+    [look.themText, look.them, "bot bubble"],
+    [look.meText, look.me, "user bubble"],
+    [look.soft, look.gd, "secondary text"],
+    [look.runText, look.run, "Run button"],
+    [look.sim, look.bar, "simulated label"],
+  ]) assert.ok(contrast(fg, bg) >= 4.5, `${what} contrast ${contrast(fg, bg).toFixed(2)} is below 4.5:1`);
+}
+
 async function walkDemo(page, label) {
   await page.waitForSelector('.gd[data-state="intro"]');
   await noOverflow(page, `${label} intro`);
+  await checkDarkTheme(page);
   assert.match(await page.$eval(".gd-sim", (node) => node.textContent), /Simulated, no funds move/);
   assert.match(await page.$eval(".gd-composer", (node) => node.textContent), /\/pay-agent/);
   assert.match(await page.$eval('[data-action="send"]', (node) => node.textContent), /^Run$/);

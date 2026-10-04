@@ -165,23 +165,24 @@
   // ---------- Avatars and icons ----------
   var FACE = {
     research: '<svg class="gd-face" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#15b3ad"/><circle cx="23" cy="28" r="4.5" fill="#fff"/><circle cx="41" cy="28" r="4.5" fill="#fff"/><circle cx="23" cy="28" r="2" fill="#33363c"/><circle cx="41" cy="28" r="2" fill="#33363c"/><path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>',
-    data: '<svg class="gd-face" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="20" fill="#33363c"/><circle cx="23" cy="30" r="4.5" fill="#fff"/><circle cx="43" cy="26" r="4.5" fill="#fff"/><circle cx="23" cy="30" r="2" fill="#15b3ad"/><circle cx="43" cy="26" r="2" fill="#15b3ad"/><path d="M24 44h16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>',
+    data: '<svg class="gd-face" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="20" fill="#33363c" stroke="#5c6068" stroke-width="2"/><circle cx="23" cy="30" r="4.5" fill="#fff"/><circle cx="43" cy="26" r="4.5" fill="#fff"/><circle cx="23" cy="30" r="2" fill="#15b3ad"/><circle cx="43" cy="26" r="2" fill="#15b3ad"/><path d="M24 44h16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>',
   };
   var ICON = {
     run: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
     check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     replay: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     hood: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 7 3.5 12l5 5M15.5 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    grok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c.6 4.4 2.9 6.9 8.5 8.5-5.6 1.6-7.9 4.1-8.5 8.5-.6-4.4-2.9-6.9-8.5-8.5 5.6-1.6 7.9-4.1 8.5-8.5z" fill="currentColor"/></svg>',
     file: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
   };
 
   // ---------- Window ----------
   var hoodId = "gd-hood-" + Math.floor(Math.random() * 1e9).toString(36);
   mount.innerHTML =
-    '<div class="gd" data-state="intro">' +
+    '<div class="gd" data-state="intro" data-theme="dark">' +
       '<div class="gd-titlebar">' +
-        '<span class="gd-dots" aria-hidden="true"><i></i><i></i><i></i></span>' +
-        '<span class="gd-title">Grok Bot</span>' +
+        '<span class="gd-avatar" aria-hidden="true">' + ICON.grok + '</span>' +
+        '<span class="gd-title"><strong>Grok Bot</strong><span>Agent chat</span></span>' +
         '<span class="gd-sim" data-sim-label>Simulated, no funds move</span>' +
       '</div>' +
       '<section class="gd-pane" aria-label="Conversation between Research bot and Data bot">' +
@@ -189,7 +190,7 @@
           '<span class="gd-stack" aria-hidden="true">' + FACE.research + FACE.data + '</span>' +
           '<span class="gd-pane-title"><strong>Research bot &amp; Data bot</strong><span>Direct messages</span></span>' +
           '<span class="gd-pane-actions">' +
-            '<button type="button" class="gd-tool" data-action="hood" aria-pressed="false" aria-expanded="false" aria-controls="' + hoodId + '">' + ICON.hood + '<span>Under the hood</span></button>' +
+            '<button type="button" class="gd-tool" data-action="hood" aria-label="Under the hood" aria-pressed="false" aria-expanded="false" aria-controls="' + hoodId + '">' + ICON.hood + '<span>Under the hood</span></button>' +
             '<button type="button" class="gd-tool gd-tool-icon" data-action="replay" aria-label="Replay demo" title="Replay">' + ICON.replay + '</button>' +
           '</span>' +
         '</header>' +
