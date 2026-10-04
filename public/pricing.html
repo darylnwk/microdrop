@@ -3,30 +3,103 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Microdrip pricing: 5% per transaction, paid by the buyer. $0.10 minimum.">
   <link rel="icon" href="/favicon.jpg" type="image/jpeg">
   <link rel="stylesheet" href="/brand.css">
   <title>Microdrip pricing</title>
 </head>
 <body class="pricing">
-  <main>
-    <header class="top">
-      <a class="lockup" href="/">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container">
+      <a class="lockup" href="/" aria-label="Microdrip home">
         <img class="mark" src="/mark.png" alt="" width="181" height="368">
         <span class="words">
           <span class="name">Microdrip</span>
           <span class="tag">Agent payments</span>
         </span>
       </a>
-      <nav>
-        <a href="/">Register</a>
-        <a href="/docs">Pay</a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/docs">Docs</a>
         <a href="/pricing" aria-current="page">Pricing</a>
+        <a class="btn btn-primary btn-sm" href="/#register">Get an API key</a>
       </nav>
-    </header>
-    <h1>Pricing</h1>
-    <p class="rate">5% per transaction</p>
-    <p>The buyer pays the fee. The payee receives the listed price.</p>
-    <p>Minimum $0.10.</p>
+    </div>
+  </header>
+  <main id="main">
+    <div class="container">
+      <section class="price-hero" aria-labelledby="pricing-title">
+        <div>
+          <p class="eyebrow">Pricing</p>
+          <h1 id="pricing-title">One simple fee</h1>
+          <p class="rate">5% per transaction</p>
+          <p class="lede">The buyer pays the fee. The payee receives the listed price.</p>
+          <ul class="price-points">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Minimum $0.10 per payment.</span></li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The fee is added on top of the price, never taken out of it.</span></li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Settled in USDC on Base. Microdrip charges nothing else.</span></li>
+          </ul>
+        </div>
+        <div class="card" aria-labelledby="example-title">
+          <h2 id="example-title">Worked example</h2>
+          <p class="muted">Research bot pays Data bot for a $1.00 listing.</p>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Line</th><th class="num">USDC</th><th class="num">Atomic</th></tr></thead>
+            <tbody>
+              <tr><td>Listed price, paid to Data bot</td><td class="num">$1.00</td><td class="num"><code>1000000</code></td></tr>
+              <tr><td>Microdrip fee (5%), paid to the platform</td><td class="num">$0.05</td><td class="num"><code>50000</code></td></tr>
+              <tr><td><strong>Research bot pays in total</strong></td><td class="num"><strong>$1.05</strong></td><td class="num"><code>1050000</code></td></tr>
+            </tbody>
+          </table></div>
+          <p class="small muted">At the $0.10 minimum, the fee is $0.005 and the buyer pays $0.105.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="faq-title">
+        <div class="section-head">
+          <h2 id="faq-title">Questions</h2>
+        </div>
+        <div class="faq">
+          <details open>
+            <summary>Who pays the fee?</summary>
+            <p>The buyer. The challenge amount is the listed price plus 5%. The buyer signs one transfer of the listed price to the payee and a second transfer of the fee to the platform.</p>
+          </details>
+          <details>
+            <summary>How is the fee rounded?</summary>
+            <p>The fee is 5% of the listed price in atomic USDC (6 decimals), rounded down to a whole atomic unit. A price of <code>100001</code> has a fee of <code>5000</code>.</p>
+          </details>
+          <details>
+            <summary>Is there a minimum?</summary>
+            <p>Yes, $0.10 (<code>100000</code> atomic USDC). Smaller payments are refused with <code>amount_below_minimum</code>.</p>
+          </details>
+          <details>
+            <summary>Does Microdrip hold my money?</summary>
+            <p>No. The buyer's signed authorizations move USDC on Base straight to your registered address and to the platform address. Your books show what has been credited to you.</p>
+          </details>
+          <details>
+            <summary>Can I set any price?</summary>
+            <p>Your price must be strictly above the cost you declare at registration and at least $0.10. Otherwise Microdrip will not offer a challenge or return the paid response.</p>
+          </details>
+          <details>
+            <summary>Which networks and tokens are supported?</summary>
+            <p>USDC on Base (<code>eip155:8453</code>) only.</p>
+          </details>
+        </div>
+      </section>
+    </div>
   </main>
+  <footer class="site-footer">
+    <div class="container">
+      <span>Microdrip &middot; x402 payments in USDC on Base</span>
+      <nav aria-label="Footer">
+        <a href="/">Home</a>
+        <a href="/docs">Docs</a>
+        <a href="/docs#demo">Demo</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="/ui.js"></script>
 </body>
 </html>

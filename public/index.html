@@ -3,55 +3,247 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="data:,">
-  <title>Microdrip</title>
-  <style>
-    :root { color-scheme: light; }
-    body { margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; background: #f4f0e6; color: #1c1915; }
-    main { max-width: 40rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
-    h1 { font-size: 2rem; line-height: 1.1; margin: 0 0 0.5rem; }
-    p { line-height: 1.45; }
-    form, section { background: #fffdf8; border: 1px solid #d9d0c1; border-radius: 12px; padding: 1rem; margin-top: 1rem; }
-    label { display: block; font-family: "Avenir Next", "Segoe UI", sans-serif; font-size: 0.92rem; margin-top: 0.85rem; }
-    input { width: 100%; box-sizing: border-box; margin-top: 0.3rem; padding: 0.7rem 0.75rem; font-size: 1rem; border: 1px solid #b7ad9e; border-radius: 8px; background: #fff; }
-    button { margin-top: 1rem; padding: 0.75rem 1rem; font-size: 1rem; border: 0; border-radius: 8px; background: #1f4d3a; color: #fff; cursor: pointer; }
-    button:focus, input:focus { outline: 2px solid #1f4d3a; outline-offset: 2px; }
-    #form-error { min-height: 1.2em; color: #8d1d18; font-family: "Avenir Next", "Segoe UI", sans-serif; }
-    #api-key { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; overflow-wrap: anywhere; background: #f4f0e6; padding: 0.75rem; border-radius: 8px; }
-    a { color: #1f4d3a; }
-    code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
-    @media (max-width: 480px) {
-      main { padding: 1rem 0.85rem 2rem; }
-      h1 { font-size: 1.7rem; }
-    }
-  </style>
+  <meta name="description" content="Microdrip lets one AI agent pay another in USDC on Base, using x402.">
+  <link rel="icon" href="/favicon.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/brand.css">
+  <title>Microdrip · Payments between Grok bots</title>
 </head>
-<body>
-  <main>
-    <h1>Microdrip</h1>
-    <p>Register the Base address that should receive USDC. Set a price above your cost, then create an API key. Your agent uses that key to accept x402 payments on Base.</p>
-    <p><a href="/docs">Pay another agent</a> · <a href="/pricing">Pricing</a></p>
-    <p id="agent-instructions">Your agent sends header <code>Authorization: Bearer</code> and the API key on <code>GET {{resourcePath}}</code>.</p>
-    <form id="register-form">
-      <label for="base-address">Base address
-        <input id="base-address" name="baseAddress" autocomplete="off" required>
-      </label>
-      <label for="price">Price in atomic USDC
-        <input id="price" name="priceAtomic" inputmode="numeric" autocomplete="off" required>
-      </label>
-      <label for="cost">Your cost in atomic USDC
-        <input id="cost" name="costAtomic" inputmode="numeric" autocomplete="off" required>
-      </label>
-      <button id="register-button" type="submit">Register</button>
-      <p id="form-error" role="alert"></p>
-    </form>
-    <section id="key-section" hidden>
-      <h2>API key</h2>
-      <p>Create a key for this registration. It is shown here once you create it.</p>
-      <button id="create-key" type="button">Create API key</button>
-      <p id="api-key"></p>
+<body class="home">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container">
+      <a class="lockup" href="/" aria-label="Microdrip home">
+        <img class="mark" src="/mark.png" alt="" width="181" height="368">
+        <span class="words">
+          <span class="name">Microdrip</span>
+          <span class="tag">Agent payments</span>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/" aria-current="page">Home</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a class="btn btn-primary btn-sm" href="/#register">Get an API key</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <p class="eyebrow">x402 &middot; USDC on Base</p>
+          <h1>Payments between <em>Grok bots</em>.</h1>
+          <p class="lede">Microdrip lets one agent pay another in USDC on Base. Register the address that gets paid, set a price above your cost, and give your bot an API key. The buyer signs, Microdrip checks the signatures and settles.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#register">Register a bot</a>
+            <a class="btn btn-secondary" href="/docs#demo">Try the demo</a>
+          </div>
+          <p class="status-note" id="not-live"><strong>Not live yet.</strong> Payments don't run on microdrip.xyz: the hosted service isn't deployed and its platform address is unset. You can <a href="/docs#local">run it locally</a>.</p>
+          <ul class="hero-facts">
+            <li>Payee gets the listed price</li>
+            <li>Buyer pays a 5% fee</li>
+            <li>$0.10 minimum</li>
+          </ul>
+        </div>
+        <figure class="receipt-preview" aria-label="Example payment between two bots">
+          <div class="rp-row">
+            <svg class="rp-avatar" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#15b3ad"/><circle cx="23" cy="28" r="4.5" fill="#fff"/><circle cx="41" cy="28" r="4.5" fill="#fff"/><circle cx="23" cy="28" r="2" fill="#33363c"/><circle cx="41" cy="28" r="2" fill="#33363c"/><path d="M22 42c3 5 17 5 20 0" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
+            <span class="rp-who">Research bot<small>pays with /pay-agent</small></span>
+          </div>
+          <div class="rp-arrow" aria-hidden="true"></div>
+          <div class="rp-row">
+            <svg class="rp-avatar" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="20" fill="#33363c"/><circle cx="23" cy="30" r="4.5" fill="#fff"/><circle cx="43" cy="26" r="4.5" fill="#fff"/><circle cx="23" cy="30" r="2" fill="#15b3ad"/><circle cx="43" cy="26" r="2" fill="#15b3ad"/><path d="M24 44h16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
+            <span class="rp-who">Data bot<small>receives USDC on Base</small></span>
+          </div>
+          <div class="rp-card">
+            <dl>
+              <dt>Listed price</dt><dd>$0.50</dd>
+              <dt>Microdrip fee (5%)</dt><dd>$0.025</dd>
+              <dt class="total">Buyer total</dt><dd class="total">$0.525</dd>
+            </dl>
+          </div>
+          <figcaption class="rp-foot">
+            <span class="badge badge-teal">Settled on Base</span>
+            <span>Example figures</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="how" aria-labelledby="how-title">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">How it works</p>
+          <h2 id="how-title">Three steps from sign-up to paid</h2>
+          <p>Sellers register and hand their bot a key. Microdrip answers unpaid calls with an x402 challenge, and only returns the paid response once both transfers settle. The buying bot signs those transfers itself, so it needs its own setup.</p>
+        </div>
+        <ol class="steps">
+          <li><div class="card">
+            <span class="step-num">1</span>
+            <h3>Register</h3>
+            <p>Give the Base address that should receive USDC, a price, and your cost. The price must be above the cost and at least $0.10.</p>
+          </div></li>
+          <li><div class="card">
+            <span class="step-num">2</span>
+            <h3>Hand your bot a key</h3>
+            <p>Create an API key. Your bot sends it as <code>Authorization: Bearer</code>. Other bots pay you using your recipient id.</p>
+          </div></li>
+          <li><div class="card">
+            <span class="step-num">3</span>
+            <h3>Get paid on Base</h3>
+            <p>A buyer gets a <code>402</code> challenge, signs two USDC authorizations (your price, and the 5% fee), and the payment settles.</p>
+          </div></li>
+        </ol>
+        <div class="buyer-needs card" id="buyer-needs" aria-labelledby="buyer-needs-title">
+          <div>
+            <h3 id="buyer-needs-title">What the buying bot needs</h3>
+            <p class="small muted">Coinbase connector support is planned, not available yet. <a href="/docs#buyer-setup">Buyer setup</a></p>
+          </div>
+          <ul class="checklist">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A Microdrip API key, sent as <code>Authorization: Bearer</code></span></li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A funded Base USDC wallet that can sign EIP-712 typed data</span></li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The <code>/pay-agent</code> skill</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="register" aria-labelledby="register-title">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Get started</p>
+          <h2 id="register-title">Register a bot</h2>
+          <p>Prices are in USDC. Microdrip stores them as atomic units (6 decimals), so <code>$0.50</code> is <code>500000</code>.</p>
+        </div>
+        <div class="register-grid">
+          <div>
+            <form id="register-form" class="card" novalidate>
+              <label class="field" for="base-address">
+                <span class="field-label">Base address</span>
+                <input class="input mono" id="base-address" name="baseAddress" autocomplete="off" spellcheck="false" placeholder="0x…" required>
+                <span class="field-hint">USDC is paid straight to this address on Base.</span>
+              </label>
+              <div class="field-row">
+                <label class="field" for="price">
+                  <span class="field-label">Price per payment</span>
+                  <span class="affix"><span aria-hidden="true">$</span><input id="price" name="price" inputmode="decimal" autocomplete="off" placeholder="0.50" required><span class="unit">USDC</span></span>
+                  <span class="field-hint" id="price-atomic">Atomic USDC appears here</span>
+                </label>
+                <label class="field" for="cost">
+                  <span class="field-label">Your cost</span>
+                  <span class="affix"><span aria-hidden="true">$</span><input id="cost" name="cost" inputmode="decimal" autocomplete="off" placeholder="0.10" required><span class="unit">USDC</span></span>
+                  <span class="field-hint" id="cost-atomic">Use 0 if you have none</span>
+                </label>
+              </div>
+              <div class="quote" id="quote" aria-live="polite">
+                <dl>
+                  <dt>You receive per payment</dt><dd id="quote-price">&mdash;</dd>
+                  <dt>Microdrip fee (5%, paid by the buyer)</dt><dd id="quote-fee">&mdash;</dd>
+                  <dt class="total">Buyer pays in total</dt><dd class="total" id="quote-total">&mdash;</dd>
+                  <dt>Your margin over cost</dt><dd id="quote-margin">&mdash;</dd>
+                </dl>
+              </div>
+              <p class="alert alert-warn" id="quote-warning"></p>
+              <button class="btn btn-primary" id="register-button" type="submit">Register</button>
+              <p class="alert alert-error" id="form-error" role="alert"></p>
+            </form>
+
+            <section id="key-section" class="card mt-lg" aria-labelledby="key-title" hidden>
+              <div class="done-head">
+                <span class="tick" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <h3 id="key-title">Registered</h3>
+              </div>
+              <div class="key-block">
+                <span class="field-label">Recipient id</span>
+                <div class="secret">
+                  <p class="secret-value" id="recipient-id"></p>
+                  <button type="button" class="copy-btn" data-copy-target="#recipient-id"><span data-label>Copy</span></button>
+                </div>
+                <span class="field-hint">Other bots pay you by sending this id as <code>recipient</code> to <code>POST /v1/payments</code>.</span>
+              </div>
+              <div class="key-block">
+                <span class="field-label">API key</span>
+                <p class="muted small">Create a key for this registration. Your bot sends it on every request.</p>
+                <button class="btn btn-primary" id="create-key" type="button">Create API key</button>
+                <div id="key-output" hidden>
+                  <div class="secret mt-md">
+                    <p class="secret-value" id="api-key"></p>
+                    <button type="button" class="copy-btn" data-copy-target="#api-key"><span data-label>Copy</span></button>
+                  </div>
+                  <p class="alert alert-warn"><strong>Shown once.</strong> Copy this key now. Microdrip has no way to show it again, and reloading the page hides it.</p>
+                  <div class="code code-wrap">
+                    <div class="code-head"><span>Bearer header</span><button type="button" class="copy-btn"><span data-label>Copy</span></button></div>
+                    <pre id="bearer-snippet"></pre>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="card aside-card" aria-labelledby="agent-title">
+            <h3 id="agent-title">What your bot sends</h3>
+            <p id="agent-instructions">Your agent sends header <code>Authorization: Bearer</code> and the API key on <code>GET {{resourcePath}}</code>.</p>
+            <ol>
+              <li>The first call returns <code>402</code> with a <code>PAYMENT-REQUIRED</code> challenge.</li>
+              <li>The buyer signs and retries with <code>PAYMENT-SIGNATURE</code>.</li>
+              <li>After both transfers settle, the paid response arrives with a <code>PAYMENT-RESPONSE</code> receipt.</li>
+            </ol>
+            <p class="small muted">Paying another bot instead? Grok bots use the <code>/pay-agent</code> skill. See <a href="/docs#pay-agent">Pay another agent</a>.</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="books" aria-labelledby="books-title">
+      <div class="container">
+        <div class="register-grid">
+          <div class="section-head">
+            <p class="eyebrow">Books</p>
+            <h2 id="books-title">See what you've been paid</h2>
+            <p>Paste an API key to read <code>GET /v1/books</code> for that registration. The key stays in this page and is only sent to this Microdrip service.</p>
+          </div>
+          <div class="card">
+            <form id="books-form" class="books-form" novalidate>
+              <label class="sr-only" for="books-key">API key</label>
+              <input class="input mono" id="books-key" name="apiKey" autocomplete="off" spellcheck="false" placeholder="mp_…">
+              <button class="btn btn-secondary" id="books-button" type="submit">Load books</button>
+            </form>
+            <p class="alert alert-error" id="books-error" role="alert"></p>
+            <div class="empty" id="books-idle">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z M8 9h8 M8 12.5h8 M8 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <strong>No key loaded</strong>
+              <span>Your credited USDC and settled payments show here.</span>
+            </div>
+            <div id="books-result" hidden>
+              <dl class="stats">
+                <div class="stat"><dt>Credited</dt><dd id="books-credited">$0.00</dd></div>
+                <div class="stat"><dt>Settled payments</dt><dd id="books-count">0</dd></div>
+                <div class="stat"><dt>Buyer fees</dt><dd id="books-fees">$0.00<small>to the platform</small></dd></div>
+              </dl>
+              <p class="small muted books-terms" id="books-terms"></p>
+              <div class="empty" id="books-empty" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c3 3.6 5.5 6.6 5.5 9.9A5.5 5.5 0 0 1 12 19a5.5 5.5 0 0 1-5.5-5.6c0-3.3 2.5-6.3 5.5-9.9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <strong>No settled payments yet</strong>
+                <span>When a buyer pays and both transfers settle, the credit appears here.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
+  <footer class="site-footer">
+    <div class="container">
+      <span>Microdrip &middot; x402 payments in USDC on Base</span>
+      <nav aria-label="Footer">
+        <a href="/">Home</a>
+        <a href="/docs">Docs</a>
+        <a href="/docs#demo">Demo</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="/ui.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

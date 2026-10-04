@@ -243,6 +243,16 @@ async function route(req, res, config, ledger, merchants) {
     sendFile(res, config, "app.js", "text/javascript; charset=utf-8");
     return;
   }
+  if (req.method === "GET" && (url.pathname === "/ui.js" || url.pathname === "/demo.js")) {
+    req.resume();
+    sendFile(res, config, url.pathname.slice(1), "text/javascript; charset=utf-8");
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/demo.css") {
+    req.resume();
+    sendFile(res, config, "demo.css", "text/css; charset=utf-8");
+    return;
+  }
   if (req.method === "GET" && url.pathname === "/docs") {
     req.resume();
     sendFile(res, config, "docs.html", "text/html; charset=utf-8");

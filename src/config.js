@@ -24,7 +24,7 @@ export function loadConfig(explicitPath) {
     throw new Error("maxTimeoutSeconds must be an integer greater than 0");
   }
   const resourcePath = raw.resourcePath ?? "/v1/resource";
-  const reserved = new Set(["/", "/app.js", "/docs", "/pricing", "/brand.css", "/mark.png", "/favicon.jpg", "/v1/register", "/v1/keys", "/v1/books", "/v1/payments"]);
+  const reserved = new Set(["/", "/app.js", "/ui.js", "/demo.js", "/demo.css", "/docs", "/pricing", "/brand.css", "/mark.png", "/favicon.jpg", "/v1/register", "/v1/keys", "/v1/books", "/v1/payments"]);
   if (typeof resourcePath !== "string" || !resourcePath.startsWith("/") || resourcePath.includes("?")) {
     throw new Error("resourcePath must be an absolute path");
   }
