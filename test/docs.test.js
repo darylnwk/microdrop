@@ -159,6 +159,14 @@ test("the pay-agent skill, the docs, pricing and home agree", () => {
   assert.equal(/echo the challenge/i.test(skill.body), false);
   assert.equal(/0x[0-9a-fA-F]{40}/.test(skill.body), false);
   assert.equal(/sign (?:one|a single) transfer of the (?:full )?quote/i.test(skill.body), false);
+  // The skill says which wallet signs, and does not pretend the Coinbase connector can.
+  assert.match(skill.body, /## Buyer wallet/);
+  assert.match(skill.body, /sender's own Base wallet/);
+  assert.match(skill.body, /EIP-712 typed data/);
+  assert.match(skill.body, /Do not use the Coinbase connector for this payment yet/);
+  assert.match(skill.body, /Coinbase connector support is planned/);
+  assert.match(skill.body, /amount_mismatch/);
+  assert.match(skill.body, /Never ask for, print, or paste a private key/);
 
   // Docs: the skill, the flow, the raw API and the demo mount.
   assert.match(docs, new RegExp(skill.name));
@@ -202,6 +210,21 @@ test("the pay-agent skill, the docs, pricing and home agree", () => {
   for (const anchor of anchors) assert.match(docs, new RegExp(`id="${anchor}"`), anchor);
   assert.match(docs, /id="grok-demo"/);
   assert.match(docs, /Simulated, no funds move/);
+  // What the buyer needs, honestly scoped.
+  const buyer = docs.slice(docs.indexOf('id="buyer-setup"'), docs.indexOf('id="demo"'));
+  assert.match(buyer, /What the buyer needs/);
+  assert.match(buyer, /A Microdrip API key/);
+  assert.match(buyer, /A funded Base USDC wallet that can sign/);
+  assert.match(buyer, /\/pay-agent<\/code> skill/);
+  assert.match(buyer, /Coinbase connector support: planned/);
+  assert.match(buyer, /amount_mismatch/);
+  assert.match(buyer, /href="https:\/\/docs\.cdp\.coinbase\.com\//);
+  assert.equal(/Approve|Decline/.test(docs.slice(docs.indexOf('id="demo"'), docs.indexOf('id="quickstart"'))), false);
+  assert.match(docs, /Under the hood/);
+  // Not live on microdrip.xyz, near the top of the page.
+  assert.match(docs, /id="not-live"/);
+  assert.ok(docs.indexOf('id="not-live"') < docs.indexOf('id="demo"'));
+  assert.match(docs, /Payments don't run on microdrip\.xyz: the hosted service isn't deployed and its platform address is unset/);
   assert.match(docs, /src="\/demo\.js"/);
   assert.match(docs, /href="\/demo\.css"/);
   assert.match(docs, /src="\/ui\.js"/);
@@ -230,6 +253,20 @@ test("the pay-agent skill, the docs, pricing and home agree", () => {
   assert.match(home, /href="\/docs"/);
   assert.match(home, /href="\/docs#demo"/);
   assert.match(home, /Shown once/);
+  assert.equal(home.includes("No buyer wallet integration"), false);
+  assert.match(home, /id="not-live"/);
+  assert.ok(home.indexOf('id="not-live"') < home.indexOf('id="how"'), "the not-live note is in the hero");
+  assert.match(home, /Payments don't run on microdrip\.xyz: the hosted service isn't deployed and its platform address is unset/);
+  assert.match(home, /id="buyer-needs"/);
+  assert.match(home, /A Microdrip API key/);
+  assert.match(home, /A funded Base USDC wallet that can sign/);
+  assert.match(home, /\/pay-agent<\/code> skill/);
+  assert.match(home, /Coinbase connector support is planned/);
+  assert.match(home, /href="\/docs#buyer-setup"/);
+  const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+  assert.equal(readme.includes("Buyers do not need an account"), false);
+  assert.match(readme, /Microdrip API key, a funded Base USDC wallet that can sign/);
+  assert.match(readme, /not live on microdrip\.xyz yet/);
 
   assert.match(brand, /#15b3ad/);
   assert.match(brand, /#33363c/);
@@ -255,6 +292,8 @@ test("the demo script is self-contained and never calls the network", () => {
   assert.match(demo, /\* 5n\) \/ 100n/);
   assert.match(demo, /MINIMUM_ATOMIC = 100000n/);
   assert.match(demo, /prefers-reduced-motion/);
+  assert.equal(/Approve|Decline|walletAtomic/.test(demo), false, "the demo has no approval step and no made-up buyer balance");
+  assert.match(demo, /Under the hood/);
   assert.ok(fs.statSync(demoCssPath).size > 0);
   assert.ok(fs.statSync(uiPath).size > 0);
   assert.ok(meetsMinimum(DEMO_PRICE));
@@ -291,14 +330,19 @@ async function demoState(page) {
   return page.$eval(".gd", (node) => node.getAttribute("data-state"));
 }
 
-async function balances(page) {
-  return page.evaluate(() => {
-    const read = (bot) => {
-      const node = document.querySelector(`[data-balance="${bot}"]`);
-      return { value: node.querySelector("[data-value]").textContent, delta: node.querySelector("[data-delta]").textContent };
-    };
-    return { research: read("research"), data: read("data") };
-  });
+async function sellerBooks(page) {
+  return page.$eval('[data-balance="data"]', (node) => ({
+    label: node.querySelector(".gd-balance-kind").textContent,
+    value: node.querySelector("[data-value]").textContent,
+    delta: node.querySelector("[data-delta]").textContent,
+  }));
+}
+
+async function chat(page) {
+  return page.$$eval(".gd-log .gd-msg:not(.gd-typing)", (nodes) => nodes.map((node) => ({
+    from: node.getAttribute("data-from"),
+    text: node.querySelector(".gd-bubble").textContent,
+  })));
 }
 
 async function decoded(page, id) {
@@ -323,17 +367,46 @@ async function press(page, selector) {
 async function walkDemo(page, label) {
   await page.waitForSelector('.gd[data-state="intro"]');
   await noOverflow(page, `${label} intro`);
-  assert.deepEqual(await balances(page), {
-    research: { value: "$5.00 USDC", delta: "Starting balance" },
-    data: { value: "$0.00", delta: "creditedAtomic 0 \u00b7 settledCount 0" },
-  });
   assert.match(await page.$eval(".gd-sim", (node) => node.textContent), /Simulated, no funds move/);
   assert.match(await page.$eval(".gd-composer", (node) => node.textContent), /\/pay-agent/);
-  assert.equal(await page.$$eval(".gd-bot", (nodes) => nodes.length), 2);
-  assert.equal(await page.$$eval(".gd-http", (nodes) => nodes.length), 0);
+  assert.match(await page.$eval('[data-action="send"]', (node) => node.textContent), /^Run$/);
+  // No approval step and no buyer balance anywhere; the seller figure is /v1/books credited.
+  assert.equal(await page.$$eval('[data-action="approve"], [data-action="decline"], [data-balance="research"]', (nodes) => nodes.length), 0);
+  assert.equal(/Approve|Decline/.test(await page.$eval(".gd", (node) => node.textContent)), false);
+  assert.deepEqual(await sellerBooks(page), { label: "/v1/books credited", value: "$0.00", delta: "creditedAtomic 0 \u00b7 settledCount 0" });
+  assert.equal(await page.$$eval(".gd-http, .gd-card", (nodes) => nodes.length), 0);
+  // Under the hood starts closed.
+  assert.equal(await page.$eval(".gd-hood", (node) => node.hidden), true);
+  assert.equal(await page.$eval('[data-action="hood"]', (node) => node.getAttribute("aria-expanded")), "false");
 
+  // One press runs the whole scripted exchange: the bot signs and pays on its own.
   await press(page, '[data-action="send"]');
-  await page.waitForSelector('.gd[data-state="quote"]', { timeout: 15000 });
+  await page.waitForSelector('.gd[data-state="done"]', { timeout: 20000 });
+  await noOverflow(page, `${label} done`);
+
+  // The main view is the plain conversation.
+  assert.equal(await page.$$eval(".gd-log .gd-card, .gd-log .gd-http, .gd-log button:not(.gd-link)", (nodes) => nodes.length), 0);
+  const messages = await chat(page);
+  const research = messages.filter((m) => m.from === "research").map((m) => m.text).join("\n");
+  const data = messages.filter((m) => m.from === "data").map((m) => m.text).join("\n");
+  assert.match(research, /Quote: \$0\.50 to Data bot plus the \$0\.025 Microdrip fee, \$0\.525 USDC on Base\./);
+  assert.match(research, /Paying \$0\.525 via Microdrip\./);
+  assert.match(research, /Settled, tx 0x[0-9a-f]{4}\u2026[0-9a-f]{4}\./);
+  assert.match(data, /Here's the file\./);
+  assert.ok(messages.findIndex((m) => /Paying/.test(m.text)) < messages.findIndex((m) => /Settled/.test(m.text)));
+  assert.ok(messages.findIndex((m) => /Settled/.test(m.text)) < messages.findIndex((m) => /Here's the file/.test(m.text)));
+  assert.match(await page.$eval(".gd-end", (node) => node.textContent), /Payment complete\./);
+
+  // The details live under the hood: hidden until opened.
+  assert.equal(await page.$eval('[data-http="challenge"]', (node) => node.getBoundingClientRect().height), 0);
+  await press(page, '[data-action="hood"]');
+  assert.equal(await page.$eval('[data-action="hood"]', (node) => node.getAttribute("aria-pressed")), "true");
+  assert.equal(await page.$eval('[data-action="hood"]', (node) => node.getAttribute("aria-expanded")), "true");
+  assert.equal(await page.$eval(".gd-hood", (node) => node.hidden), false);
+  assert.ok(await page.$eval('[data-http="challenge"]', (node) => node.getBoundingClientRect().height) > 100);
+  await noOverflow(page, `${label} under the hood`);
+  assert.equal(await page.$$eval(".gd-hood [data-card], .gd-hood .gd-http", (nodes) => nodes.length), 5);
+
   const fields = await page.$$eval("[data-card=payment] [data-field]", (nodes) => Object.fromEntries(nodes.map((node) => [node.getAttribute("data-field"), node.textContent])));
   assert.deepEqual(fields, {
     price: usd(DEMO_PRICE),
@@ -341,15 +414,8 @@ async function walkDemo(page, label) {
     total: usd(quotedFor(DEMO_PRICE)),
   });
   assert.deepEqual(fields, { price: "$0.50", fee: "$0.025", total: "$0.525" });
-  await noOverflow(page, `${label} payment card`);
+  assert.deepEqual(await page.$$eval("[data-card=payment] [data-step]", (nodes) => nodes.map((node) => node.getAttribute("data-status"))), ["done", "done"]);
 
-  // Raw HTTP is hidden until toggled, then shows the real challenge shape.
-  const hiddenHeight = await page.$eval('[data-http="challenge"]', (node) => node.getBoundingClientRect().height);
-  assert.equal(hiddenHeight, 0);
-  await press(page, '[data-action="raw"]');
-  assert.equal(await page.$eval('[data-action="raw"]', (node) => node.getAttribute("aria-pressed")), "true");
-  const shownHeight = await page.$eval('[data-http="challenge"]', (node) => node.getBoundingClientRect().height);
-  assert.ok(shownHeight > 100, String(shownHeight));
   const challenge = await decoded(page, "payment-required");
   assert.deepEqual(decodeBase64Json(await rawHeader(page, "payment-required")), challenge);
   const accept = challenge.accepts[0];
@@ -365,15 +431,8 @@ async function walkDemo(page, label) {
   assert.match(await page.$eval('[data-http="challenge"] .gd-http-req', (node) => node.textContent), /^POST \/v1\/payments/);
   assert.match(await page.$eval('[data-http="challenge"] .gd-http-res', (node) => node.textContent), /HTTP\/1\.1 402 Payment Required/);
 
-  await press(page, '[data-action="approve"]');
-  await page.waitForSelector('.gd[data-state="done"]', { timeout: 20000 });
-  await noOverflow(page, `${label} receipt`);
   assert.equal(await page.$eval('[data-card="receipt"] [data-field="paid"]', (node) => node.firstChild.textContent), "$0.525");
-  const after = await balances(page);
-  assert.equal(after.research.value, `${usd(5000000n - quotedFor(DEMO_PRICE))} USDC`);
-  assert.equal(after.research.value, "$4.475 USDC");
-  assert.equal(after.data.value, "$0.50");
-  assert.equal(after.data.delta, "creditedAtomic 500000 \u00b7 settledCount 1");
+  assert.deepEqual(await sellerBooks(page), { label: "/v1/books credited", value: "$0.50", delta: "creditedAtomic 500000 \u00b7 settledCount 1" });
 
   // The retry carries two EIP-3009 authorizations in the real shape. The real
   // verifier accepts every field and only rejects the made-up signature.
@@ -408,6 +467,8 @@ async function walkDemo(page, label) {
   assert.equal(receipt.payer, authorization.from);
   assert.equal(receipt.amount, quotedFor(DEMO_PRICE).toString());
   assert.match(await page.$eval('[data-http="settle"] .gd-http-res', (node) => node.textContent), /"settled":true,"amount":"500000","network":"eip155:8453","recipient":"[0-9a-f]{32}"/);
+  // The chat's "Settled, tx" line quotes the receipt's payee transaction.
+  assert.match(research, new RegExp(`Settled, tx ${receipt.transaction.slice(0, 6)}\u2026${receipt.transaction.slice(-4)}\\.`));
 
   const books = await decoded(page, "books");
   assert.equal(books.creditedAtomic, DEMO_PRICE);
@@ -416,25 +477,21 @@ async function walkDemo(page, label) {
   assert.deepEqual(Object.keys(books), ["creditedAtomic", "feeAtomic", "settledCount", "priceAtomic", "costAtomic"]);
   assert.ok(BigInt(books.priceAtomic) > BigInt(books.costAtomic));
 
-  // Replay resets everything.
+  // Replay resets the chat and the panel; the panel stays open.
   await press(page, '.gd-pane-actions [data-action="replay"]');
   await page.waitForSelector('.gd[data-state="intro"]');
-  assert.equal(await page.$$eval(".gd-card", (nodes) => nodes.length), 0);
-  assert.equal((await balances(page)).research.value, "$5.00 USDC");
+  assert.equal(await page.$$eval(".gd-card, .gd-http", (nodes) => nodes.length), 0);
+  assert.equal((await sellerBooks(page)).value, "$0.00");
+  assert.equal(await page.$eval("[data-hood-empty]", (node) => node.hidden), false);
+  assert.equal(await page.$eval(".gd-hood", (node) => node.hidden), false);
 
-  // Decline: nothing is signed and balances stay put.
+  // Replay from the end-of-run link too.
   await press(page, '[data-action="send"]');
-  await page.waitForSelector('.gd[data-state="quote"]', { timeout: 15000 });
-  await press(page, '[data-action="decline"]');
-  await page.waitForSelector("[data-declined]");
-  await page.waitForSelector(".gd-end", { timeout: 15000 });
-  assert.equal(await demoState(page), "declined");
-  assert.equal(await page.$$eval('[data-card="receipt"]', (nodes) => nodes.length), 0);
-  assert.equal(await page.$$eval('[data-http="settle"]', (nodes) => nodes.length), 0);
-  assert.equal((await balances(page)).research.value, "$5.00 USDC");
-  assert.equal((await balances(page)).data.value, "$0.00");
+  await page.waitForSelector(".gd-end", { timeout: 20000 });
   await press(page, '.gd-end [data-action="replay"]');
   await page.waitForSelector('.gd[data-state="intro"]');
+  await press(page, '[data-action="hood"]');
+  assert.equal(await page.$eval(".gd-hood", (node) => node.hidden), true);
 }
 
 test("the docs demo pays Data bot with the real shapes on desktop and phone", async () => {
