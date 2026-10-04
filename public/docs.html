@@ -34,6 +34,7 @@
         <p>Start</p>
         <ul>
           <li><a href="#overview">Overview</a></li>
+          <li><a href="#buyer-setup">What the buyer needs</a></li>
           <li><a href="#demo">Interactive demo</a></li>
           <li><a href="#quickstart">Quickstart</a></li>
           <li><a href="#payment-flow">How a payment works</a></li>
@@ -59,15 +60,35 @@
             <li>Amounts are atomic USDC strings with 6 decimals: <code>500000</code> is $0.50.</li>
             <li>Only Base USDC is supported (<code>eip155:8453</code>). Microdrip checks EIP-3009 signatures locally and settles through the PayAI facilitator.</li>
           </ul>
+          <div class="callout callout-warn" id="not-live">
+            <p><strong>Not live yet.</strong> Payments don't run on microdrip.xyz: the hosted service isn't deployed and its platform address is unset. To try a payment, <a href="#local">run the service locally</a>.</p>
+          </div>
+        </section>
+
+        <section id="buyer-setup" aria-labelledby="buyer-setup-title">
+          <h2 id="buyer-setup-title">What the buyer needs</h2>
+          <p>A seller only registers and hands its bot a key. The buying bot signs the payment itself, so it needs three things:</p>
+          <ol class="buyer-setup-list">
+            <li><strong>A Microdrip API key.</strong> Register the buying bot on the <a href="/#register">home page</a> and create a key. The bot sends it as <code>Authorization: Bearer</code> on <code>POST /v1/payments</code>.</li>
+            <li><strong>A funded Base USDC wallet that can sign.</strong> It must hold the buyer total in USDC on Base ($0.525 for a $0.50 price) and sign two EIP-712 <code>TransferWithAuthorization</code> messages per payment. Use a plain address (an EOA): Microdrip recovers each signature to <code>from</code>, so smart-contract wallet signatures fail with <code>bad_signature</code>. Give the bot a dedicated address with only what it may spend, and keep its key in the bot's secrets, never in chat.</li>
+            <li><strong>The <code>/pay-agent</code> skill.</strong> Add <code>.grok/skills/pay-agent/SKILL.md</code> to the bot. It reads the challenge, signs both authorizations, retries, and reports the receipt.</li>
+          </ol>
+          <h3 id="coinbase-connector">Coinbase connector support: planned</h3>
+          <p>We'd like the buyer wallet to be the Coinbase connector in Grok Bot. It holds USDC and can pay x402 requests, but today it can't pay a Microdrip challenge:</p>
+          <ul>
+            <li>Its x402 tools (<code>coinbase_x402_fetch</code>, <code>coinbase_x402_pay</code>) create one standard payment: a single authorization for the challenge amount to <code>payTo</code>. Microdrip needs two, the listed price to the payee and the fee to the platform. A single authorization for the buyer total is rejected with <code>amount_mismatch</code>.</li>
+            <li>It has no tool that signs arbitrary EIP-712 typed data, so the skill can't sign the two authorizations through it.</li>
+          </ul>
+          <p>Coinbase's other agent wallets don't close the gap yet either. The Agentic Wallet MCP only pays through its own x402 tool. Coinbase Wallet MCP can sign typed data, but you approve each signature in Coinbase Wallet by hand, and it signs as a Base Account, which is a smart-contract wallet. AgentKit would need a custom signing action in your own MCP server. Sources: <a href="https://docs.cdp.coinbase.com/ai-agents/coinbase-for-agents/coinbase-mcp" rel="noopener">Coinbase MCP</a>, <a href="https://docs.cdp.coinbase.com/agentic-wallet/mcp/mcp-tools/overview" rel="noopener">Agentic Wallet MCP tools</a>, <a href="https://docs.cdp.coinbase.com/get-started/build-with-ai/base-mcp" rel="noopener">Coinbase Wallet MCP</a>.</p>
         </section>
 
         <section id="demo" aria-labelledby="demo-title">
           <h2 id="demo-title">Interactive demo</h2>
-          <p>Research bot buys a dataset from Data bot. Press send to run <code>/pay-agent</code>, approve the payment request, and watch the receipt and balances update. Turn on <strong>Raw HTTP</strong> to see the exact requests, headers, and decoded JSON.</p>
+          <p>Research bot buys a dataset from Data bot. Press <strong>Run</strong> and the bot runs <code>/pay-agent</code> on its own: it gets the quote, signs with its wallet, pays, and reports back in plain text. Nobody approves anything in the chat. Open <strong>Under the hood</strong> for the payment request, the receipt, Data bot's <code>/v1/books</code> credit, and the exact HTTP exchange.</p>
           <div class="gd-mount" id="grok-demo" data-demo>
             <noscript><p class="callout">The interactive demo needs JavaScript. The same requests are shown in <a href="#api-payments">POST /v1/payments</a>.</p></noscript>
           </div>
-          <p class="small muted">Simulated, no funds move. The demo runs entirely in your browser: no network calls and no keys. Addresses, signatures, and transaction ids are made up, but every request and response has the same shape as the real service, and the fee uses the real rule.</p>
+          <p class="small muted">Simulated, no funds move, and payments aren't live on microdrip.xyz yet. The demo runs entirely in your browser: no network calls and no keys. Addresses, signatures, and transaction ids are made up, but every request and response has the same shape as the real service, and the fee uses the real rule.</p>
         </section>
 
         <section id="quickstart" aria-labelledby="quickstart-title">
@@ -113,7 +134,7 @@ curl http://127.0.0.1:4020/v1/books -H "Authorization: Bearer mp_..."</pre>
             <li><strong>Who is paid:</strong> the recipient id from registration (not a Base address).</li>
             <li><strong>Listed price:</strong> the atomic amount the payee receives, at least <code>100000</code>. It is not the buyer total.</li>
           </ul>
-          <p>The skill handles the challenge, signs both authorizations, retries, and reports the receipt. That is exactly what the <a href="#demo">demo</a> walks through.</p>
+          <p>The skill handles the challenge, signs both authorizations with the buyer's wallet, retries, and reports the receipt, with no approval step in the chat. That is what the <a href="#demo">demo</a> shows. The bot needs the setup in <a href="#buyer-setup">What the buyer needs</a>.</p>
         </section>
 
         <section id="api" aria-labelledby="api-title">

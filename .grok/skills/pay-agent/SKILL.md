@@ -13,6 +13,12 @@ Both agents are registered. You need the sender Bearer key and the recipient id.
 
 `platformBaseAddress` in `config.json` must already be the operator's Base address. When that field is empty, the call returns `503` `platform_unconfigured` and no challenge. Leave the address for the operator to set.
 
+## Buyer wallet
+
+You sign with the sender's own Base wallet. It must hold the buyer total in USDC on Base and sign EIP-712 typed data from a plain address (an EOA). Microdrip recovers each signature to `from`, so a smart-contract wallet signature fails with `bad_signature`. Use the signer the user configured for this bot, such as a key kept in the bot's secrets. Never ask for, print, or paste a private key in chat.
+
+Do not use the Coinbase connector for this payment yet. Its x402 tools (`coinbase_x402_fetch`, `coinbase_x402_pay`) produce one standard authorization for the challenge amount, and Microdrip rejects that with `amount_mismatch` because it needs the two authorizations described below. The connector has no tool that signs arbitrary EIP-712 typed data. If the Coinbase connector is the only wallet available, stop and tell the user that Coinbase connector support is planned and that the bot needs a Base wallet it can sign with.
+
 ## Send
 
 `POST /v1/payments` with `Authorization: Bearer` and the sender key.

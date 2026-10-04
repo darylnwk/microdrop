@@ -585,3 +585,16 @@ td code { white-space: nowrap; }
 @media (max-width: 560px) { .docs-nav { top: 3.5rem; } }
 .docs-content [id] { scroll-margin-top: 5.5rem; }
 @media (max-width: 900px) { .docs-content [id] { scroll-margin-top: 8rem; } }
+
+/* ---------- Status note and buyer needs ---------- */
+.status-note { max-width: 38rem; margin: 1.1rem 0 0; padding: 0.6rem 0.85rem; border-radius: var(--r-md); border: 1px solid rgba(138, 90, 0, 0.2); background: var(--warn-50); color: var(--ink-soft); font-size: 0.88rem; }
+.status-note strong { color: var(--warn); }
+.buyer-needs { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 0.75rem 2rem; align-items: center; margin-top: 1rem; box-shadow: var(--shadow-sm); }
+.buyer-needs h3 { margin: 0 0 0.3rem; font-size: 1.05rem; }
+.buyer-needs p { margin: 0; }
+.checklist { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; font-size: 0.93rem; }
+.checklist li { display: flex; gap: 0.55rem; align-items: flex-start; min-width: 0; }
+.checklist svg { flex: none; width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; color: var(--teal); }
+.buyer-setup-list { padding-left: 1.25rem; }
+.buyer-setup-list li { margin-bottom: 0.6rem; }
+@media (max-width: 720px) { .buyer-needs { grid-template-columns: minmax(0, 1fr); } }

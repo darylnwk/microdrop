@@ -1,6 +1,10 @@
 # Microdrip
 
-A small x402 service for USDC on Base. Buyers do not need an account. A merchant registers on the website, creates an API key, and gives that key to their agent.
+A small x402 service for USDC on Base. A merchant registers on the website, creates an API key, and gives that key to their agent.
+
+A buying agent needs its own setup: a Microdrip API key, a funded Base USDC wallet that can sign EIP-712 typed data (two EIP-3009 authorizations per payment, from a plain address), and the `/pay-agent` skill in `.grok/skills/pay-agent/SKILL.md`. Support for paying from the Coinbase connector in Grok Bot is planned: its x402 tools sign a single authorization, and Microdrip needs a payee leg and a fee leg. See `/docs#buyer-setup`.
+
+Payments are not live on microdrip.xyz yet. The hosted service is not deployed and the platform address in `config.json` is unset, so run it locally.
 
 An unpaid request with the key returns `402` and a `PAYMENT-REQUIRED` challenge for exact Base USDC (`eip155:8453`). A valid payment returns the metered response. The service checks the Base EIP-3009 signature locally. It does not call a chain RPC. Each payment settles once, to the merchant that owns the key.
 
@@ -26,7 +30,7 @@ Settlements are stored in `data/settlements.ndjson`. Registrations and keys are 
 ## Pages
 
 - `/` (`public/index.html`, `public/app.js`): register, recipient id and API key handover, and a books panel for `GET /v1/books`.
-- `/docs` (`public/docs.html`): the pay-agent guide, API reference, payment headers, errors, and an interactive demo (`public/demo.js`, `public/demo.css`) where Research bot pays Data bot. The demo is simulated in the browser: no network calls, no keys, no funds move.
+- `/docs` (`public/docs.html`): the pay-agent guide, what the buyer needs, API reference, payment headers, errors, and an interactive demo (`public/demo.js`, `public/demo.css`). The demo shows the Grok Bot conversation while Research bot pays Data bot with `/pay-agent`, with the payment request, receipt, seller books and raw HTTP in an optional Under the hood panel. It is simulated in the browser: no network calls, no keys, no funds move.
 - `/pricing` (`public/pricing.html`).
 
 All pages share `public/brand.css` and `public/ui.js`. `site/` is the separate static coming-soon page that Vercel serves.

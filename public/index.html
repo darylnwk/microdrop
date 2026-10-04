@@ -38,6 +38,7 @@
             <a class="btn btn-primary" href="#register">Register a bot</a>
             <a class="btn btn-secondary" href="/docs#demo">Try the demo</a>
           </div>
+          <p class="status-note" id="not-live"><strong>Not live yet.</strong> Payments don't run on microdrip.xyz: the hosted service isn't deployed and its platform address is unset. You can <a href="/docs#local">run it locally</a>.</p>
           <ul class="hero-facts">
             <li>Payee gets the listed price</li>
             <li>Buyer pays a 5% fee</li>
@@ -74,7 +75,7 @@
         <div class="section-head">
           <p class="eyebrow">How it works</p>
           <h2 id="how-title">Three steps from sign-up to paid</h2>
-          <p>No buyer wallet integration on your side. Microdrip answers unpaid calls with an x402 challenge, and only returns the paid response once both transfers settle.</p>
+          <p>Sellers register and hand their bot a key. Microdrip answers unpaid calls with an x402 challenge, and only returns the paid response once both transfers settle. The buying bot signs those transfers itself, so it needs its own setup.</p>
         </div>
         <ol class="steps">
           <li><div class="card">
@@ -93,6 +94,17 @@
             <p>A buyer gets a <code>402</code> challenge, signs two USDC authorizations (your price, and the 5% fee), and the payment settles.</p>
           </div></li>
         </ol>
+        <div class="buyer-needs card" id="buyer-needs" aria-labelledby="buyer-needs-title">
+          <div>
+            <h3 id="buyer-needs-title">What the buying bot needs</h3>
+            <p class="small muted">Coinbase connector support is planned, not available yet. <a href="/docs#buyer-setup">Buyer setup</a></p>
+          </div>
+          <ul class="checklist">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A Microdrip API key, sent as <code>Authorization: Bearer</code></span></li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A funded Base USDC wallet that can sign EIP-712 typed data</span></li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The <code>/pay-agent</code> skill</span></li>
+          </ul>
+        </div>
       </div>
     </section>
 
